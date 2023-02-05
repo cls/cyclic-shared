@@ -152,7 +152,7 @@ void untyped_state::scan()
             --child->weak_;
             ++child->strong_;
         });
-    } else if (color_ != color::Black) {
+    } else {
         scan_black();
     }
 }
@@ -164,9 +164,9 @@ void untyped_state::scan_black()
         if (child->color_ != color::Black) {
             child->scan_black();
         }
+        --child->weak_;
+        ++child->strong_;
     });
-    --weak_;
-    ++strong_;
 }
 
 void untyped_state::collect_white()

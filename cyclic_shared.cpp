@@ -46,9 +46,9 @@ private:
         const auto end(map_.end());
 
         while (it != end) {
-            untyped_state& state(*it->second.state_);
-            if (state.color_ == color::Purple && state.strong_ > 0) {
-                state.mark_gray();
+            untyped_state* state(it->second.state_);
+            if (state->color_ == color::Purple && state->strong_ > 0) {
+                state->mark_gray();
                 ++it;
             } else {
                 it = map_.erase(it);
@@ -116,7 +116,7 @@ void untyped_state::do_trace(void* ptr, Fn fn) const
 void untyped_state::release()
 {
     color_ = color::Black;
-    void* const ptr(std::exchange(ptr_, nullptr));
+    void* ptr(std::exchange(ptr_, nullptr));
     free(ptr);
     if (weak_ == 0) {
         delete this;
@@ -172,7 +172,7 @@ void untyped_state::scan_black()
 void untyped_state::collect_white()
 {
     color_ = color::Black;
-    void* const ptr(std::exchange(ptr_, nullptr));
+    void* ptr(std::exchange(ptr_, nullptr));
     do_trace(ptr, [](untyped_state* child) {
         if (child->color_ == color::White) {
             child->collect_white();

@@ -5,7 +5,9 @@ project(cyclic_shared
 )
 
 if(BUILD_TESTING)
-    enable_testing()
+    # When running CTest with --test-action memcheck, a leak means failure.
+    set(MEMORYCHECK_COMMAND_OPTIONS "--error-exitcode=3 --leak-check=full")
+    include(CTest)
 endif()
 
 include_directories(include)

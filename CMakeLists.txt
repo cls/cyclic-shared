@@ -4,6 +4,10 @@ project(cyclic_shared
     LANGUAGES CXX
 )
 
+if(BUILD_TESTING)
+    enable_testing()
+endif()
+
 include_directories(include)
 
 add_subdirectory(lib)

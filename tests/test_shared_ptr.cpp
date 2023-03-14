@@ -7,17 +7,17 @@ namespace {
 class counter
 {
 public:
-    counter(int* count_ptr) :
-        count_ptr_(count_ptr)
+    explicit counter(int* count_ptr) :
+        count_(*count_ptr)
     {}
 
     ~counter()
     {
-        ++*count_ptr_;
+        ++count_;
     }
 
 private:
-    int* count_ptr_;
+    int& count_;
 };
 
 } // namespace
@@ -48,6 +48,7 @@ BOOST_AUTO_TEST_CASE(raw_ctor)
         counter* raw(new counter(&count));
         cyclic::shared_ptr<counter> ptr(raw);
         BOOST_TEST(ptr.get() == raw);
+        BOOST_TEST(count == 0);
     }
     BOOST_TEST(count == 1);
 }
@@ -57,6 +58,7 @@ BOOST_AUTO_TEST_CASE(ctor_copy_null)
     cyclic::shared_ptr<counter> ptr;
     BOOST_TEST(ptr.get() == nullptr);
     cyclic::shared_ptr<counter> copy(ptr);
+    BOOST_TEST(ptr.get() == nullptr);
     BOOST_TEST(copy.get() == nullptr);
 }
 
@@ -68,9 +70,37 @@ BOOST_AUTO_TEST_CASE(ctor_copy)
         cyclic::shared_ptr<counter> ptr(raw);
         {
             cyclic::shared_ptr<counter> copy(ptr);
-            BOOST_TEST(copy.get() == ptr.get());
+            BOOST_TEST(ptr.get() == raw);
+            BOOST_TEST(copy.get() == raw);
+            BOOST_TEST(count == 0);
         }
         BOOST_TEST(count == 0);
+    }
+    BOOST_TEST(count == 1);
+}
+
+BOOST_AUTO_TEST_CASE(ctor_move_null)
+{
+    cyclic::shared_ptr<counter> ptr;
+    BOOST_TEST(ptr.get() == nullptr);
+    cyclic::shared_ptr<counter> moved(std::move(ptr));
+    BOOST_TEST(ptr.get() == nullptr);
+    BOOST_TEST(moved.get() == nullptr);
+}
+
+BOOST_AUTO_TEST_CASE(ctor_move)
+{
+    int count(0);
+    {
+        counter* raw(new counter(&count));
+        cyclic::shared_ptr<counter> ptr(raw);
+        {
+            cyclic::shared_ptr<counter> moved(std::move(ptr));
+            BOOST_TEST(ptr.get() == nullptr);
+            BOOST_TEST(moved.get() == raw);
+            BOOST_TEST(count == 0);
+        }
+        BOOST_TEST(count == 1);
     }
     BOOST_TEST(count == 1);
 }

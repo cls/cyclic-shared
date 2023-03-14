@@ -4,14 +4,14 @@
 
 namespace {
 
-class counter
+class dtor_counter
 {
 public:
-    explicit counter(int* count_ptr) :
+    explicit dtor_counter(int* count_ptr) :
         count_(*count_ptr)
     {}
 
-    ~counter()
+    ~dtor_counter()
     {
         ++count_;
     }
@@ -25,9 +25,9 @@ private:
 namespace cyclic {
 
 template<>
-struct default_trace<counter>
+struct default_trace<dtor_counter>
 {
-    void operator()(const counter*, const visitor&) const
+    void operator()(const dtor_counter*, const visitor&) const
     {}
 };
 
@@ -37,72 +37,82 @@ BOOST_AUTO_TEST_SUITE(shared_ptr)
 
 BOOST_AUTO_TEST_CASE(default_ctor)
 {
-    cyclic::shared_ptr<counter> ptr;
+    cyclic::shared_ptr<dtor_counter> ptr;
     BOOST_TEST(ptr.get() == nullptr);
+    BOOST_TEST(ptr.use_count() == 0);
 }
 
 BOOST_AUTO_TEST_CASE(raw_ctor)
 {
-    int count(0);
+    int dtor_count(0);
     {
-        counter* raw(new counter(&count));
-        cyclic::shared_ptr<counter> ptr(raw);
+        dtor_counter* raw(new dtor_counter(&dtor_count));
+        cyclic::shared_ptr<dtor_counter> ptr(raw);
         BOOST_TEST(ptr.get() == raw);
-        BOOST_TEST(count == 0);
+        BOOST_TEST(ptr.use_count() == 1);
+        BOOST_TEST(dtor_count == 0);
     }
-    BOOST_TEST(count == 1);
+    BOOST_TEST(dtor_count == 1);
 }
 
 BOOST_AUTO_TEST_CASE(ctor_copy_null)
 {
-    cyclic::shared_ptr<counter> ptr;
-    BOOST_TEST(ptr.get() == nullptr);
-    cyclic::shared_ptr<counter> copy(ptr);
+    cyclic::shared_ptr<dtor_counter> ptr;
+    cyclic::shared_ptr<dtor_counter> copy(ptr);
     BOOST_TEST(ptr.get() == nullptr);
     BOOST_TEST(copy.get() == nullptr);
+    BOOST_TEST(ptr.use_count() == 0);
+    BOOST_TEST(copy.use_count() == 0);
 }
 
 BOOST_AUTO_TEST_CASE(ctor_copy)
 {
-    int count(0);
+    int dtor_count(0);
     {
-        counter* raw(new counter(&count));
-        cyclic::shared_ptr<counter> ptr(raw);
+        dtor_counter* raw(new dtor_counter(&dtor_count));
+        cyclic::shared_ptr<dtor_counter> ptr(raw);
         {
-            cyclic::shared_ptr<counter> copy(ptr);
+            cyclic::shared_ptr<dtor_counter> copy(ptr);
             BOOST_TEST(ptr.get() == raw);
             BOOST_TEST(copy.get() == raw);
-            BOOST_TEST(count == 0);
+            BOOST_TEST(ptr.use_count() == 2);
+            BOOST_TEST(copy.use_count() == 2);
+            BOOST_TEST(dtor_count == 0);
         }
-        BOOST_TEST(count == 0);
+        BOOST_TEST(ptr.use_count() == 1);
+        BOOST_TEST(dtor_count == 0);
     }
-    BOOST_TEST(count == 1);
+    BOOST_TEST(dtor_count == 1);
 }
 
 BOOST_AUTO_TEST_CASE(ctor_move_null)
 {
-    cyclic::shared_ptr<counter> ptr;
-    BOOST_TEST(ptr.get() == nullptr);
-    cyclic::shared_ptr<counter> moved(std::move(ptr));
+    cyclic::shared_ptr<dtor_counter> ptr;
+    cyclic::shared_ptr<dtor_counter> moved(std::move(ptr));
     BOOST_TEST(ptr.get() == nullptr);
     BOOST_TEST(moved.get() == nullptr);
+    BOOST_TEST(ptr.use_count() == 0);
+    BOOST_TEST(moved.use_count() == 0);
 }
 
 BOOST_AUTO_TEST_CASE(ctor_move)
 {
-    int count(0);
+    int dtor_count(0);
     {
-        counter* raw(new counter(&count));
-        cyclic::shared_ptr<counter> ptr(raw);
+        dtor_counter* raw(new dtor_counter(&dtor_count));
+        cyclic::shared_ptr<dtor_counter> ptr(raw);
         {
-            cyclic::shared_ptr<counter> moved(std::move(ptr));
+            cyclic::shared_ptr<dtor_counter> moved(std::move(ptr));
             BOOST_TEST(ptr.get() == nullptr);
             BOOST_TEST(moved.get() == raw);
-            BOOST_TEST(count == 0);
+            BOOST_TEST(ptr.use_count() == 0);
+            BOOST_TEST(moved.use_count() == 1);
+            BOOST_TEST(dtor_count == 0);
         }
-        BOOST_TEST(count == 1);
+        BOOST_TEST(ptr.use_count() == 0);
+        BOOST_TEST(dtor_count == 1);
     }
-    BOOST_TEST(count == 1);
+    BOOST_TEST(dtor_count == 1);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

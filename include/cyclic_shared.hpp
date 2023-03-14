@@ -95,6 +95,11 @@ public:
         return ptr_;
     }
 
+    long use_count() const
+    {
+        return strong_;
+    }
+
 protected:
     virtual void trace(const void* ptr, const visitor& visitor) const = 0;
 
@@ -175,6 +180,11 @@ public:
     void* get() const
     {
         return state_ ? state_->get() : nullptr;
+    }
+
+    long use_count() const
+    {
+        return state_ ? state_->use_count() : 0;
     }
 
     operator bool() const
@@ -353,11 +363,6 @@ public:
         return static_cast<T*>(untyped_.get());
     }
 
-    operator bool() const
-    {
-        return bool(get());
-    }
-
     T& operator*() const
     {
         return *get();
@@ -366,6 +371,16 @@ public:
     T* operator->() const
     {
         return get();
+    }
+
+    long use_count() const
+    {
+        return untyped_.use_count();
+    }
+
+    operator bool() const
+    {
+        return bool(untyped_);
     }
 
 private:

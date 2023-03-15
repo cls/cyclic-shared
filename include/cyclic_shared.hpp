@@ -153,7 +153,7 @@ public:
         untyped_shared_ptr(ptr.state_)
     {}
 
-    untyped_shared_ptr(const untyped_weak_ptr& ptr) __attribute__ ((weak)); // FIXME?
+    untyped_shared_ptr(const untyped_weak_ptr& ptr) __attribute__ ((weak));
 
     untyped_shared_ptr(untyped_shared_ptr&& ptr) :
         state_(std::exchange(ptr.state_, nullptr))
@@ -187,10 +187,22 @@ public:
         return state_ ? state_->use_count() : 0;
     }
 
+    bool unique() const
+    {
+        return use_count() == 1;
+    }
+
     operator bool() const
     {
         return bool(get());
     }
+
+    bool owner_before(const untyped_shared_ptr& other) const
+    {
+        return state_ < other.state_;
+    }
+
+    bool owner_before(const untyped_weak_ptr& other) const __attribute__ ((weak));
 
 private:
     untyped_state* state_;
@@ -200,6 +212,7 @@ class untyped_weak_ptr
 {
     template<class T> friend class weak_ptr;
     friend class roots;
+    friend class untyped_shared_ptr;
 
 public:
     untyped_weak_ptr() :
@@ -267,6 +280,11 @@ private:
 untyped_shared_ptr::untyped_shared_ptr(const untyped_weak_ptr& ptr) :
     untyped_shared_ptr(ptr.lock())
 {}
+
+bool untyped_shared_ptr::owner_before(const untyped_weak_ptr& other) const
+{
+    return state_ < other.state_;
+}
 
 template<class T, class Tracer, class Deleter>
 class state : public untyped_state
@@ -353,9 +371,37 @@ public:
     template<class Y>
     shared_ptr& operator=(shared_ptr&& ptr)
     {
-        ptr_ = ptr.ptr_;
-        std::swap(untyped_, ptr.untyped_);
+        shared_ptr<T>(std::move(ptr)).swap(*this);
         return *this;
+    }
+
+    void reset()
+    {
+        *this = shared_ptr();
+    }
+
+    template<class Y>
+    void reset(Y* ptr)
+    {
+        *this = shared_ptr(ptr);
+    }
+
+    template<class Y, class Tracer>
+    void reset(Y* ptr, Tracer tracer)
+    {
+        *this = shared_ptr(ptr, std::forward<Tracer>(tracer));
+    }
+
+    template<class Y, class Tracer, class Deleter>
+    void reset(Y* ptr, Tracer tracer, Deleter deleter)
+    {
+        *this = shared_ptr(ptr, std::forward<Tracer>(tracer), std::forward<Deleter>(deleter));
+    }
+
+    void swap(shared_ptr& other)
+    {
+        std::swap(ptr_, other.ptr_);
+        std::swap(untyped_, other.untyped_);
     }
 
     T* get() const
@@ -373,14 +419,30 @@ public:
         return get();
     }
 
+    T& operator[](std::ptrdiff_t idx) const
+    {
+        return get()[idx];
+    }
+
     long use_count() const
     {
         return untyped_.use_count();
     }
 
+    bool unique() const
+    {
+        return untyped_.unique();
+    }
+
     operator bool() const
     {
         return bool(untyped_);
+    }
+
+    template<class Y>
+    bool owner_before(shared_ptr<Y> other) const
+    {
+        return untyped_.owner_before(other.untyped_);
     }
 
 private:

@@ -177,6 +177,11 @@ public:
         return *this;
     }
 
+    void swap(untyped_shared_ptr& other)
+    {
+        std::swap(state_, other.state_);
+    }
+
     void* get() const
     {
         return state_ ? state_->get() : nullptr;
@@ -268,9 +273,34 @@ public:
         return *this;
     }
 
+    void swap(untyped_weak_ptr& other)
+    {
+        std::swap(state_, other.state_);
+    }
+
+    long use_count() const
+    {
+        return state_ ? state_->use_count() : 0;
+    }
+
+    bool expired() const
+    {
+        return use_count() == 0;
+    }
+
     untyped_shared_ptr lock() const
     {
         return state_ && state_->get() ? untyped_shared_ptr(state_) : nullptr;
+    }
+
+    bool owner_before(const untyped_shared_ptr& other) const
+    {
+        return state_ < other.state_;
+    }
+
+    bool owner_before(const untyped_weak_ptr& other) const
+    {
+        return state_ < other.state_;
     }
 
 private:
@@ -401,7 +431,7 @@ public:
     void swap(shared_ptr& other)
     {
         std::swap(ptr_, other.ptr_);
-        std::swap(untyped_, other.untyped_);
+        untyped_.swap(other.untyped_);
     }
 
     T* get() const
@@ -502,6 +532,27 @@ public:
         return *this;
     }
 
+    void reset()
+    {
+        *this = weak_ptr();
+    }
+
+    void swap(weak_ptr& other)
+    {
+        std::swap(ptr_, other.ptr_);
+        untyped_.swap(other.untyped_);
+    }
+
+    long use_count() const
+    {
+        return untyped_.use_count();
+    }
+
+    bool expired() const
+    {
+        return untyped_.expired();
+    }
+
     shared_ptr<T> lock() const
     {
         shared_ptr<T> ptr;
@@ -511,6 +562,12 @@ public:
             ptr.untyped_ = untyped_shared_ptr(state);
         }
         return ptr;
+    }
+
+    template<class Y>
+    bool owner_before(shared_ptr<Y> other) const
+    {
+        return untyped_.owner_before(other.untyped_);
     }
 
 private:
